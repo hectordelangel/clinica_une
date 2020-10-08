@@ -10,29 +10,23 @@ void main() {
 class User {
   final bool correctUser;
   final String message;
-  User(
-      {this.correctUser,
-      this.message});
+  User({this.correctUser, this.message});
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       message: json["message"],
       correctUser: json["correct_user"],
-
     );
   }
 }
 
 Future<User> fetchUser(String email, String password) async {
   final http.Response response = await http.post(
-    'http://6d79dc40cf0b.ngrok.io/ClinicaUNE/api/validate_user.php',
-    headers: <String, String>{
-      'Content-Type': 'application/json; charset=UTF-8',
-    },
-    body: jsonEncode(<String, String>{
+    'http://192.168.0.3/ClinicaUNE/api/validate_user.php',
+    body: <String, String>{
       'email': email,
       'password': password,
-    }),
+    },
   );
   if (response.statusCode == 200) {
     return User.fromJson(jsonDecode(response.body));
@@ -67,7 +61,6 @@ class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
   final String title;
 
-
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
@@ -81,117 +74,128 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        child:(_futureUser == null) ? Center(
-          child: Container(
-            decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.rectangle,
-                border: Border.all(width: 5.0, color: Colors.white),
-                borderRadius: BorderRadius.all(Radius.circular(30)),
-                boxShadow: [
-                  new BoxShadow(
-                    color: Colors.black,
-                    offset: new Offset(10, 10),
-                    blurRadius: 50.0,
-                  )
-                ]),
-            width: MediaQuery.of(context).size.width * 0.90,
-            height: MediaQuery.of(context).size.height * .4,
-            child: Column(
-              // horizontal).
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Container(
-                  margin: const EdgeInsets.only(bottom: 20.0),
-                  child: Text(
-                    'Universidad del Noreste',
-                    style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20),
-                  ),
-                ),
-                Form(
+        child: (_futureUser == null)
+            ? Center(
+                child: Container(
+                  decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.rectangle,
+                      border: Border.all(width: 5.0, color: Colors.white),
+                      borderRadius: BorderRadius.all(Radius.circular(30)),
+                      boxShadow: [
+                        new BoxShadow(
+                          color: Colors.black,
+                          offset: new Offset(10, 10),
+                          blurRadius: 50.0,
+                        )
+                      ]),
+                  width: MediaQuery.of(context).size.width * 0.90,
+                  height: MediaQuery.of(context).size.height * .4,
                   child: Column(
-                    children: [
+                    // horizontal).
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
                       Container(
-                          child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16.0),
-                              child: TextFormField(
-                                controller: _emailInputController,
-                                keyboardType: TextInputType.emailAddress,
-                                autofocus: false,
-                                decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.email),
-                                  labelText: "Email",
-                                  contentPadding: EdgeInsets.fromLTRB(
-                                      20.0, 10.0, 20.0, 10.0),
-                                  border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(32.0)),
+                        margin: const EdgeInsets.only(bottom: 20.0),
+                        child: Text(
+                          'Universidad del Noreste',
+                          style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20),
+                        ),
+                      ),
+                      Form(
+                        child: Column(
+                          children: [
+                            Container(
+                                child: Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 16.0),
+                                    child: TextFormField(
+                                      controller: _emailInputController,
+                                      keyboardType: TextInputType.emailAddress,
+                                      autofocus: false,
+                                      decoration: InputDecoration(
+                                        prefixIcon: Icon(Icons.email),
+                                        labelText: "Email",
+                                        contentPadding: EdgeInsets.fromLTRB(
+                                            20.0, 10.0, 20.0, 10.0),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(32.0)),
+                                      ),
+                                    ))),
+                            SizedBox(height: 15.0),
+                            Container(
+                                child: Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 16.0),
+                                    child: TextFormField(
+                                      controller: _passwordInputController,
+                                      autofocus: false,
+                                      decoration: InputDecoration(
+                                        prefixIcon: Icon(Icons.lock),
+                                        labelText: "Password",
+                                        contentPadding: EdgeInsets.fromLTRB(
+                                            20.0, 10.0, 20.0, 10.0),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(32.0)),
+                                      ),
+                                    ))),
+                            Container(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16.0),
+                                child: SizedBox(
+                                  width: 200,
+                                  child: RaisedButton(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _futureUser = fetchUser(
+                                            _emailInputController.text,
+                                            _passwordInputController.text);
+                                      });
+                                    },
+                                    color: Colors.red,
+                                    child: Text('Log In',
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20)),
+                                  ),
                                 ),
-                              ))),
-                      SizedBox(height: 15.0),
-                      Container(
-                          child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16.0),
-                              child: TextFormField(
-                                controller: _passwordInputController,
-                                autofocus: false,
-                                decoration: InputDecoration(
-                                  prefixIcon: Icon(Icons.lock),
-                                  labelText: "Password",
-                                  contentPadding: EdgeInsets.fromLTRB(
-                                      20.0, 10.0, 20.0, 10.0),
-                                  border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(32.0)),
-                                ),
-                              ))),
-                      Container(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16.0),
-                          child: SizedBox(
-                            width: 200,
-                            child: RaisedButton(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _futureUser = fetchUser(_emailInputController.text, _passwordInputController.text);
-                                });
-                              },
-                              color: Colors.red,
-                              child: Text('Log In',
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20)),
-                            ),
-                          ),
+                            )
+                          ],
                         ),
                       )
                     ],
                   ),
-                )
-              ],
-            ),
-          ),
-        ):FutureBuilder<User>(
-        future: _futureUser,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            if(snapshot.data.correctUser==true){
-            Navigator.pushNamed(context, '/menu');
-            }else{Center(child:Text("Usuario Incorrecto"));}
-          } else if (snapshot.hasError) {
-            return Center(child:Column(children: [Text("${snapshot.error}"),Text("No jalo")],));
-          }
+                ),
+              )
+            : FutureBuilder<User>(
+                future: _futureUser,
+                builder: (context, snapshot) {
+                  if (snapshot.hasData) {
+                    if (snapshot.data.correctUser == true) {
+                      Navigator.pushNamed(context, '/menu');
+                    } else {
+                      Center(child: Text("Usuario Incorrecto"));
+                    }
+                  } else if (snapshot.hasError) {
+                    return Center(
+                        child: Column(
+                      children: [Text("${snapshot.error}"), Text("No jalo")],
+                    ));
+                  }
 
-          return CircularProgressIndicator();
-        },
-        ),
+                  return CircularProgressIndicator();
+                },
+              ),
         decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage("images/une.jpg"),
@@ -209,13 +213,11 @@ class Menu extends StatefulWidget {
 }
 
 class _MenuState extends State<Menu> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(title: Text("Clínica UNE")),
-        body: Center(
-          ),
+        body: Center(),
         drawer: drawer());
   }
 }
