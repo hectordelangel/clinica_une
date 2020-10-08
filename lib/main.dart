@@ -1,9 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(MyApp());
+}
+
+class User {
+  final bool correctUser;
+  final String message;
+  User(
+      {this.correctUser,
+      this.message});
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      message: json["message"],
+      correctUser: json["correct_user"],
+
+    );
+  }
+}
+
+Future<User> fetchUser(String email, String password) async {
+  final http.Response response = await http.post(
+    'http://6d79dc40cf0b.ngrok.io/ClinicaUNE/api/validate_user.php',
+    headers: <String, String>{
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: jsonEncode(<String, String>{
+      'email': email,
+      'password': password,
+    }),
+  );
+  if (response.statusCode == 200) {
+    return User.fromJson(jsonDecode(response.body));
+  } else {
+    // If the server did not return a 201 CREATED response,
+    // then throw an exception.
+    throw Exception('Fallo al traer el usuario');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -11,7 +48,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
+        debugShowCheckedModeBanner: false,
         initialRoute: '/',
         routes: {
           '/': (context) => MyHomePage(),
@@ -30,16 +67,21 @@ class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
   final String title;
 
+
   @override
   _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  Future<User> _futureUser;
+  final _emailInputController = TextEditingController();
+  final _passwordInputController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        child:Center(
+        child:(_futureUser == null) ? Center(
           child: Container(
             decoration: BoxDecoration(
                 color: Colors.white,
@@ -49,11 +91,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 boxShadow: [
                   new BoxShadow(
                     color: Colors.black,
-                    offset: new Offset(10,10),
+                    offset: new Offset(10, 10),
                     blurRadius: 50.0,
                   )
-                ]
-            ),
+                ]),
             width: MediaQuery.of(context).size.width * 0.90,
             height: MediaQuery.of(context).size.height * .4,
             child: Column(
@@ -76,54 +117,57 @@ class _MyHomePageState extends State<MyHomePage> {
                       Container(
                           child: Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16.0),
-                              child:TextFormField(
+                              child: TextFormField(
+                                controller: _emailInputController,
                                 keyboardType: TextInputType.emailAddress,
                                 autofocus: false,
                                 decoration: InputDecoration(
                                   prefixIcon: Icon(Icons.email),
                                   labelText: "Email",
-                                  contentPadding: EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(32.0)),
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(32.0)),
                                 ),
-                              )
-                          )
-                      ),
+                              ))),
                       SizedBox(height: 15.0),
                       Container(
                           child: Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16.0),
-                              child:TextFormField(
+                              child: TextFormField(
+                                controller: _passwordInputController,
                                 autofocus: false,
                                 decoration: InputDecoration(
                                   prefixIcon: Icon(Icons.lock),
                                   labelText: "Password",
-                                  contentPadding: EdgeInsets.fromLTRB(20.0, 10.0, 20.0, 10.0),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(32.0)),
+                                  contentPadding: EdgeInsets.fromLTRB(
+                                      20.0, 10.0, 20.0, 10.0),
+                                  border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(32.0)),
                                 ),
-                              )
-                          )
-                      ),
+                              ))),
                       Container(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 16.0),
-                          child:SizedBox(
+                          child: SizedBox(
                             width: 200,
                             child: RaisedButton(
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(24),
                               ),
                               onPressed: () {
-                                Navigator.pushNamed(context, "/menu");
+                                setState(() {
+                                  _futureUser = fetchUser(_emailInputController.text, _passwordInputController.text);
+                                });
                               },
                               color: Colors.red,
                               child: Text('Log In',
                                   style: TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 20
-
-                                  )
-                              ),
+                                      fontSize: 20)),
                             ),
                           ),
                         ),
@@ -134,6 +178,19 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
           ),
+        ):FutureBuilder<User>(
+        future: _futureUser,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            if(snapshot.data.correctUser==true){
+            Navigator.pushNamed(context, '/menu');
+            }else{Center(child:Text("Usuario Incorrecto"));}
+          } else if (snapshot.hasError) {
+            return Center(child:Column(children: [Text("${snapshot.error}"),Text("No jalo")],));
+          }
+
+          return CircularProgressIndicator();
+        },
         ),
         decoration: BoxDecoration(
           image: DecorationImage(
@@ -146,18 +203,29 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class Menu extends StatelessWidget {
+class Menu extends StatefulWidget {
+  @override
+  _MenuState createState() => _MenuState();
+}
+
+class _MenuState extends State<Menu> {
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Clínica UNE")),
-      body: Center(),
-      drawer: drawer()
-    );
+        appBar: AppBar(title: Text("Clínica UNE")),
+        body: Center(
+          ),
+        drawer: drawer());
   }
 }
 
-class Patient extends StatelessWidget {
+class Patient extends StatefulWidget {
+  @override
+  _PatientState createState() => _PatientState();
+}
+
+class _PatientState extends State<Patient> {
   final _formKey = GlobalKey<FormState>();
   final _patientNameInputController = TextEditingController();
   final _recordNumberInputController = TextEditingController();
@@ -183,17 +251,25 @@ class Patient extends StatelessWidget {
           child: Column(
             children: [
               _buildInputField(_patientNameInputController, "Nombre"),
-              _buildInputField(_recordNumberInputController, "No de expediente"),
+              _buildInputField(
+                  _recordNumberInputController, "No de expediente"),
               _buildInputField(_patientAgeInputController, "Edad"),
               _buildInputField(_patientGenderInputController, "Sexo"),
-              _buildInputField(_patientAddressInputController, "Domicilio del paciente"),
+              _buildInputField(
+                  _patientAddressInputController, "Domicilio del paciente"),
               _buildInputField(_patientPhoneInputController, "Teléfono"),
-              _buildInputField(_relativeNameInputController, "Familiar responsable"),
-              _buildInputField(_relativeAddressInputController, "Domicilio del responsable"),
-              _buildInputField(_relativePhoneInputController, "Telefono del responsable"),
-              _buildInputField(_patientOccupationInputController, "Ocupación del paciente"),
-              _buildInputField(_patientDrugsAllergyInputController, "Alergia a medicamentos"),
-              _buildInputField(_patientBloodTypeInputController, "Grupo Sanguineo"),
+              _buildInputField(
+                  _relativeNameInputController, "Familiar responsable"),
+              _buildInputField(
+                  _relativeAddressInputController, "Domicilio del responsable"),
+              _buildInputField(
+                  _relativePhoneInputController, "Telefono del responsable"),
+              _buildInputField(
+                  _patientOccupationInputController, "Ocupación del paciente"),
+              _buildInputField(_patientDrugsAllergyInputController,
+                  "Alergia a medicamentos"),
+              _buildInputField(
+                  _patientBloodTypeInputController, "Grupo Sanguineo"),
               _buildInputField(_patientRHInputController, "Rh"),
               Row(
                 children: [
@@ -202,11 +278,8 @@ class Patient extends StatelessWidget {
                     child: RaisedButton(
                         child: Text('Crear'),
                         onPressed: () {
-                          if (_formKey.currentState.validate()) {
-
-                          }
-                        }
-                    ),
+                          if (_formKey.currentState.validate()) {}
+                        }),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 10),
@@ -214,8 +287,7 @@ class Patient extends StatelessWidget {
                         child: Text('Regresar'),
                         onPressed: () {
                           Navigator.pushNamed(context, "/Menu");
-                        }
-                    ),
+                        }),
                   ),
                 ],
               )
@@ -230,10 +302,10 @@ class Patient extends StatelessWidget {
   Container _buildInputField(controller, text) {
     return Container(
         margin: const EdgeInsets.only(bottom: 5.0),
-        child:Flexible(
+        child: Flexible(
           child: Padding(
             padding: const EdgeInsets.all(10.0),
-            child:  TextFormField(
+            child: TextFormField(
                 style: TextStyle(fontWeight: FontWeight.bold),
                 validator: (value) {
                   if (value.isEmpty) {
@@ -244,14 +316,11 @@ class Patient extends StatelessWidget {
                 controller: controller,
                 decoration: InputDecoration(
                   labelText: (text),
-                )
-            ),
+                )),
           ),
-        )
-    );
+        ));
   }
 }
-
 
 class drawer extends StatelessWidget {
   @override
@@ -265,14 +334,14 @@ class drawer extends StatelessWidget {
         padding: EdgeInsets.zero,
         children: <Widget>[
           DrawerHeader(
-            child:Align(
+            child: Align(
               alignment: Alignment.center,
-              child: Text('Clínica UNE',
+              child: Text(
+                'Clínica UNE',
                 style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 50
-                ),
+                    fontSize: 50),
               ),
             ),
             decoration: BoxDecoration(
@@ -296,7 +365,7 @@ class drawer extends StatelessWidget {
             ),
             children: <Widget>[
               ListTile(
-                title:Text('Médico General'),
+                title: Text('Médico General'),
                 onTap: () {
                   Navigator.pop(context);
                 },
@@ -358,5 +427,3 @@ class drawer extends StatelessWidget {
     );
   }
 }
-
-
