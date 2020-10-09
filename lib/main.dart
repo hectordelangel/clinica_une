@@ -10,19 +10,27 @@ void main() {
 class User {
   final bool correctUser;
   final String message;
-  User({this.correctUser, this.message});
+  final int user_id;
+  final String username;
+  final String email;
+  final String password;
+  User({this.correctUser, this.message, this.user_id, this.username, this.email, this.password});
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      message: json["message"],
       correctUser: json["correct_user"],
+      message: json["message"],
+      user_id: json["user_id"],
+      username: json["username"],
+      email: json["email"],
+      password: json["password"],
     );
   }
 }
 
 Future<User> fetchUser(String email, String password) async {
   final http.Response response = await http.post(
-    'http://192.168.0.3/ClinicaUNE/api/validate_user.php',
+    'http://192.168.56.1/ClinicaUNE/api/validate_user.php',
     body: <String, String>{
       'email': email,
       'password': password,
@@ -31,9 +39,30 @@ Future<User> fetchUser(String email, String password) async {
   if (response.statusCode == 200) {
     return User.fromJson(jsonDecode(response.body));
   } else {
+    throw Exception('Fallo al traer el usuario');
+  }
+}
+
+class Date {
+  final List<dynamic> dates;
+  Date({this.dates});
+
+  factory Date.fromJson(Map<String, dynamic> json) {
+    return Date(
+      dates: json["dates"],
+
+    );
+  }
+}
+
+Future<Date> fetchDate(int user_id) async {
+  final response = await http.get('http://192.168.56.1/ClinicaUNE/api/pending_appointments.php?user_id='+user_id.toString());
+  if (response.statusCode == 200) {
+    return Date.fromJson(jsonDecode(response.body));
+  } else {
     // If the server did not return a 201 CREATED response,
     // then throw an exception.
-    throw Exception('Fallo al traer el usuario');
+    throw Exception('Fallo al traer las citas');
   }
 }
 
@@ -74,6 +103,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        width: MediaQuery.of(context).size.width * 1,
+        height: MediaQuery.of(context).size.height * 1,
         child: (_futureUser == null)
             ? Center(
                 child: Container(
@@ -182,18 +213,18 @@ class _MyHomePageState extends State<MyHomePage> {
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     if (snapshot.data.correctUser == true) {
-                      Navigator.pushNamed(context, '/menu');
+                      Navigator.push(context,MaterialPageRoute(
+                          builder: (context) => Menu(user_id: snapshot.data.user_id, username: snapshot.data.username)));
                     } else {
                       Center(child: Text("Usuario Incorrecto"));
                     }
                   } else if (snapshot.hasError) {
-                    return Center(
-                        child: Column(
-                      children: [Text("${snapshot.error}"), Text("No jalo")],
-                    ));
-                  }
+                      return Text("${snapshot.error}");
+                      _futureUser = null;
 
-                  return CircularProgressIndicator();
+
+                  }
+                  return SizedBox(width:80, height: 80 ,child:Center(child: CircularProgressIndicator()));
                 },
               ),
         decoration: BoxDecoration(
@@ -207,20 +238,37 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class Menu extends StatefulWidget {
-  @override
-  _MenuState createState() => _MenuState();
-}
-
-class _MenuState extends State<Menu> {
+class Menu extends StatelessWidget {
+  final int user_id;
+  final String username;
+  Menu({Key key, this.user_id, this.username}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(title: Text("Clínica UNE")),
+        appBar: AppBar(title: Text(username)),
         body: Center(),
-        drawer: drawer());
+        drawer: drawer(user_id: user_id,));
   }
 }
+
+
+// class Menu extends StatefulWidget {
+//   @override
+//   _MenuState createState() => _MenuState();
+// }
+//
+// class _MenuState extends State<Menu> {
+//   Future<User> futureUser;
+//   final User user;
+//   _MenuState({Key key, this.user}) : super(key: key);
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//         appBar: AppBar(title: Text(user.)),
+//         body: Center(),
+//         drawer: drawer());
+//   }
+// }
 
 class Patient extends StatefulWidget {
   @override
@@ -242,7 +290,6 @@ class _PatientState extends State<Patient> {
   final _patientBloodTypeInputController = TextEditingController();
   final _patientRHInputController = TextEditingController();
   final _patientDrugsAllergyInputController = TextEditingController();
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -324,7 +371,82 @@ class _PatientState extends State<Patient> {
   }
 }
 
+class Dates extends StatefulWidget {
+  int user_id;
+  Dates({Key key, this.user_id}) : super(key: key);
+  @override
+  _DatesState createState() => _DatesState();
+}
+
+class _DatesState extends State<Dates> {
+  int user_id;
+  Future<Date> _futureDate;
+  void initState() {
+    super.initState();
+    _futureDate = fetchDate(widget.user_id);
+  }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Clínica UNE")),
+      body: SingleChildScrollView(
+        child: FutureBuilder<Date>(
+        future: _futureDate,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            var dates = display_dates(snapshot.data);
+            return ListView(children: dates,);
+
+          } else if (snapshot.hasError) {
+            return Text(widget.user_id.toString());
+          }
+          // By default, show a loading spinner.
+          return CircularProgressIndicator();
+        },
+      ),
+      ),
+      drawer: drawer(),
+    );
+  }
+
+  List<Widget> display_dates(Date date){
+    List<Widget> list = [];
+    for (var dates in date.dates)
+      list.add(
+          Card(child: Container(child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  child:Text(dates["Nombre"]),
+                  width: 200,
+                ),
+                flex: 1,
+              ),
+              Expanded(
+                child: Text(dates["Fecha"]),
+                flex: 2,
+              ),
+              Expanded(
+                child: Text("Consultorio "+dates["Consultorio"]),
+                flex: 2,
+              ),
+            ],
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          ),
+            padding: EdgeInsets.all(16),
+          ),
+          )
+
+      );
+    return list;
+  }
+
+}
+
+
 class drawer extends StatelessWidget {
+  final int user_id;
+  drawer({Key key, this.user_id}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -350,61 +472,6 @@ class drawer extends StatelessWidget {
               color: Colors.red,
             ),
           ),
-          ExpansionTile(
-            title: RichText(
-              text: TextSpan(
-                style: Theme.of(context).textTheme.body1,
-                children: [
-                  WidgetSpan(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                      child: Icon(Icons.local_hospital),
-                    ),
-                  ),
-                  TextSpan(text: 'Consultas'),
-                ],
-              ),
-            ),
-            children: <Widget>[
-              ListTile(
-                title: Text('Médico General'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: Text('Psicología'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                title: Text('Nutrición'),
-                onTap: () {
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-          ListTile(
-            title: RichText(
-              text: TextSpan(
-                style: Theme.of(context).textTheme.body1,
-                children: [
-                  WidgetSpan(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                      child: Icon(Icons.people),
-                    ),
-                  ),
-                  TextSpan(text: 'Pacientes'),
-                ],
-              ),
-            ),
-            onTap: () {
-              Navigator.pushNamed(context, '/patients');
-            },
-          ),
           ListTile(
             title: RichText(
               text: TextSpan(
@@ -416,12 +483,13 @@ class drawer extends StatelessWidget {
                       child: Icon(Icons.receipt),
                     ),
                   ),
-                  TextSpan(text: 'Recetas'),
+                  TextSpan(text: 'Citas'),
                 ],
               ),
             ),
             onTap: () {
-              Navigator.pop(context);
+              Navigator.push(context,MaterialPageRoute(
+                  builder: (context) => Dates(user_id: user_id)));
             },
           ),
         ],
