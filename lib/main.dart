@@ -10,27 +10,31 @@ void main() {
 class User {
   final bool correctUser;
   final String message;
-  final int user_id;
+  final int userId;
   final String username;
   final String email;
-  final String password;
-  User({this.correctUser, this.message, this.user_id, this.username, this.email, this.password});
+  User({
+    this.correctUser,
+    this.message,
+    this.userId,
+    this.username,
+    this.email,
+  });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       correctUser: json["correct_user"],
       message: json["message"],
-      user_id: json["user_id"],
+      userId: json["user_id"],
       username: json["username"],
       email: json["email"],
-      password: json["password"],
     );
   }
 }
 
 Future<User> fetchUser(String email, String password) async {
   final http.Response response = await http.post(
-    'http://192.168.56.1/ClinicaUNE/api/validate_user.php',
+    'http://192.168.0.3/ClinicaUNE/api/validate_user.php',
     body: <String, String>{
       'email': email,
       'password': password,
@@ -50,13 +54,14 @@ class Date {
   factory Date.fromJson(Map<String, dynamic> json) {
     return Date(
       dates: json["dates"],
-
     );
   }
 }
 
-Future<Date> fetchDate(int user_id) async {
-  final response = await http.get('http://192.168.56.1/ClinicaUNE/api/pending_appointments.php?user_id='+user_id.toString());
+Future<Date> fetchDate(int userId) async {
+  final response = await http.get(
+      'http://192.168.0.3/ClinicaUNE/api/pending_appointments.php?user_id=' +
+          userId.toString());
   if (response.statusCode == 200) {
     return Date.fromJson(jsonDecode(response.body));
   } else {
@@ -76,7 +81,6 @@ class MyApp extends StatelessWidget {
         routes: {
           '/': (context) => MyHomePage(),
           '/menu': (context) => Menu(),
-          '/patients': (context) => Patient(),
         },
         title: 'Flutter Demo',
         theme: ThemeData(
@@ -165,6 +169,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                     child: TextFormField(
                                       controller: _passwordInputController,
                                       autofocus: false,
+                                      obscureText: true,
                                       decoration: InputDecoration(
                                         prefixIcon: Icon(Icons.lock),
                                         labelText: "Password",
@@ -213,18 +218,23 @@ class _MyHomePageState extends State<MyHomePage> {
                 builder: (context, snapshot) {
                   if (snapshot.hasData) {
                     if (snapshot.data.correctUser == true) {
-                      Navigator.push(context,MaterialPageRoute(
-                          builder: (context) => Menu(user_id: snapshot.data.user_id, username: snapshot.data.username)));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => Dates(
+                                    userId: snapshot.data.userId,
+                                  )));
                     } else {
                       Center(child: Text("Usuario Incorrecto"));
                     }
                   } else if (snapshot.hasError) {
-                      return Text("${snapshot.error}");
-                      _futureUser = null;
-
-
+                    _futureUser = null;
+                    return Text("${snapshot.error}");
                   }
-                  return SizedBox(width:80, height: 80 ,child:Center(child: CircularProgressIndicator()));
+                  return SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: Center(child: CircularProgressIndicator()));
                 },
               ),
         decoration: BoxDecoration(
@@ -239,214 +249,96 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class Menu extends StatelessWidget {
-  final int user_id;
+  final int userId;
   final String username;
-  Menu({Key key, this.user_id, this.username}) : super(key: key);
+  Menu({Key key, this.userId, this.username}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(title: Text(username)),
         body: Center(),
-        drawer: drawer(user_id: user_id,));
+        drawer: drawer(
+          userId: userId,
+        ));
   }
 }
 
-
-// class Menu extends StatefulWidget {
-//   @override
-//   _MenuState createState() => _MenuState();
-// }
-//
-// class _MenuState extends State<Menu> {
-//   Future<User> futureUser;
-//   final User user;
-//   _MenuState({Key key, this.user}) : super(key: key);
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//         appBar: AppBar(title: Text(user.)),
-//         body: Center(),
-//         drawer: drawer());
-//   }
-// }
-
-class Patient extends StatefulWidget {
+class Dates extends StatefulWidget {
+  final int userId;
+  Dates({Key key, this.userId}) : super(key: key);
   @override
-  _PatientState createState() => _PatientState();
+  _DatesState createState() => _DatesState();
 }
 
-class _PatientState extends State<Patient> {
-  final _formKey = GlobalKey<FormState>();
-  final _patientNameInputController = TextEditingController();
-  final _recordNumberInputController = TextEditingController();
-  final _patientAgeInputController = TextEditingController();
-  final _patientGenderInputController = TextEditingController();
-  final _patientAddressInputController = TextEditingController();
-  final _patientPhoneInputController = TextEditingController();
-  final _relativeNameInputController = TextEditingController();
-  final _relativeAddressInputController = TextEditingController();
-  final _relativePhoneInputController = TextEditingController();
-  final _patientOccupationInputController = TextEditingController();
-  final _patientBloodTypeInputController = TextEditingController();
-  final _patientRHInputController = TextEditingController();
-  final _patientDrugsAllergyInputController = TextEditingController();
+class _DatesState extends State<Dates> {
+  int userId;
+  Future<Date> _futureDate;
+  void initState() {
+    super.initState();
+    _futureDate = fetchDate(widget.userId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Clínica UNE")),
-      body: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _buildInputField(_patientNameInputController, "Nombre"),
-              _buildInputField(
-                  _recordNumberInputController, "No de expediente"),
-              _buildInputField(_patientAgeInputController, "Edad"),
-              _buildInputField(_patientGenderInputController, "Sexo"),
-              _buildInputField(
-                  _patientAddressInputController, "Domicilio del paciente"),
-              _buildInputField(_patientPhoneInputController, "Teléfono"),
-              _buildInputField(
-                  _relativeNameInputController, "Familiar responsable"),
-              _buildInputField(
-                  _relativeAddressInputController, "Domicilio del responsable"),
-              _buildInputField(
-                  _relativePhoneInputController, "Telefono del responsable"),
-              _buildInputField(
-                  _patientOccupationInputController, "Ocupación del paciente"),
-              _buildInputField(_patientDrugsAllergyInputController,
-                  "Alergia a medicamentos"),
-              _buildInputField(
-                  _patientBloodTypeInputController, "Grupo Sanguineo"),
-              _buildInputField(_patientRHInputController, "Rh"),
-              Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: RaisedButton(
-                        child: Text('Crear'),
-                        onPressed: () {
-                          if (_formKey.currentState.validate()) {}
-                        }),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: RaisedButton(
-                        child: Text('Regresar'),
-                        onPressed: () {
-                          Navigator.pushNamed(context, "/Menu");
-                        }),
-                  ),
-                ],
-              )
-            ],
-          ),
+      body: Center(
+        child: FutureBuilder<Date>(
+          future: _futureDate,
+          builder: (context, snapshot) {
+            if (snapshot.hasData) {
+              return displayDates(snapshot.data);
+            } else if (snapshot.hasError) {
+              return Text(widget.userId.toString());
+            }
+            // By default, show a loading spinner.
+            return CircularProgressIndicator();
+          },
         ),
       ),
       drawer: drawer(),
     );
   }
 
-  Container _buildInputField(controller, text) {
-    return Container(
-        margin: const EdgeInsets.only(bottom: 5.0),
-        child: Flexible(
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: TextFormField(
-                style: TextStyle(fontWeight: FontWeight.bold),
-                validator: (value) {
-                  if (value.isEmpty) {
-                    return 'Campo requerido';
-                  }
-                  return null;
-                },
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: (text),
-                )),
-          ),
-        ));
-  }
-}
-
-class Dates extends StatefulWidget {
-  int user_id;
-  Dates({Key key, this.user_id}) : super(key: key);
-  @override
-  _DatesState createState() => _DatesState();
-}
-
-class _DatesState extends State<Dates> {
-  int user_id;
-  Future<Date> _futureDate;
-  void initState() {
-    super.initState();
-    _futureDate = fetchDate(widget.user_id);
-  }
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Clínica UNE")),
-      body: SingleChildScrollView(
-        child: FutureBuilder<Date>(
-        future: _futureDate,
-        builder: (context, snapshot) {
-          if (snapshot.hasData) {
-            var dates = display_dates(snapshot.data);
-            return ListView(children: dates,);
-
-          } else if (snapshot.hasError) {
-            return Text(widget.user_id.toString());
-          }
-          // By default, show a loading spinner.
-          return CircularProgressIndicator();
-        },
-      ),
-      ),
-      drawer: drawer(),
-    );
-  }
-
-  List<Widget> display_dates(Date date){
-    List<Widget> list = [];
-    for (var dates in date.dates)
-      list.add(
-          Card(child: Container(child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  child:Text(dates["Nombre"]),
-                  width: 200,
+  Widget displayDates(Date listOfAppointments) {
+    return ListView.builder(
+        itemBuilder: (_, index) => Card(
+              child: Container(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        child: Text(listOfAppointments.dates[index]["Nombre"]
+                            .toString()),
+                        width: 200,
+                      ),
+                      flex: 2,
+                    ),
+                    Expanded(
+                      child: Text(
+                          listOfAppointments.dates[index]["Fecha"].toString()),
+                      flex: 1,
+                    ),
+                    Expanded(
+                      child: Text("Consultorio: " +
+                          listOfAppointments.dates[index]["Consultorio"]
+                              .toString()),
+                      flex: 1,
+                    ),
+                  ],
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 ),
-                flex: 1,
+                padding: EdgeInsets.all(16),
               ),
-              Expanded(
-                child: Text(dates["Fecha"]),
-                flex: 2,
-              ),
-              Expanded(
-                child: Text("Consultorio "+dates["Consultorio"]),
-                flex: 2,
-              ),
-            ],
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          ),
-            padding: EdgeInsets.all(16),
-          ),
-          )
-
-      );
-    return list;
+            ),
+        padding: const EdgeInsets.all(20.0),
+        itemCount: listOfAppointments.dates.length);
   }
-
 }
-
 
 class drawer extends StatelessWidget {
-  final int user_id;
-  drawer({Key key, this.user_id}) : super(key: key);
+  final int userId;
+  drawer({Key key, this.userId}) : super(key: key);
   @override
   Widget build(BuildContext context) {
     return Drawer(
@@ -488,8 +380,10 @@ class drawer extends StatelessWidget {
               ),
             ),
             onTap: () {
-              Navigator.push(context,MaterialPageRoute(
-                  builder: (context) => Dates(user_id: user_id)));
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => Dates(userId: userId)));
             },
           ),
         ],
